@@ -8,18 +8,33 @@ public class GameSystemManager : MonoBehaviour
     GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient;
     // Start is called before the first frame update
 
-    enum ClientToServerSignifiers
+    GameObject findGameSessionButton, placeHolderGameButton;
+
+    public enum ClientToServerSignifiers
     {
         LOGIN = 0,
-        CREATE_USER = 1
+        CREATE_USER = 1,
+        ADD_TO_GAME_SESSION = 2,
+        PLAY_WAS_MADE = 3
     }
 
-    enum ServerToClientSignifiers
+    public enum ServerToClientSignifiers
     {
         LOGIN_FALIED = -1,
         LOGIN_SUCCESS = 0,
         CREATE_USER_SUCCESS = 1,
-        CREATE_USER_FALIED = 2
+        CREATE_USER_FALIED = 2,
+        GAME_SESSION_STARTED = 3,
+        OPPONENT_PLAY = 4
+    }
+
+    public enum GameStates
+    {
+        LOGIN = 0,
+        MAIN_MENU = 1,
+        WAITING_FOR_MATCH = 2,
+        PLAYING_TIC_TAC_TOE = 3,
+
     }
     void Start()
     {
@@ -47,8 +62,13 @@ public class GameSystemManager : MonoBehaviour
                 case "NetworkClient":
                     networkClient = go;
                     break;
+                case "Find Game":
+                    findGameSessionButton = go;
+                    break;
+                case "MakePlay":
+                    placeHolderGameButton = go;
+                    break;
                 default:
-                    Debug.LogWarning("Should not be here. line 33 more game objs in the scene");
                     break;
             }
 
@@ -58,12 +78,24 @@ public class GameSystemManager : MonoBehaviour
         toggleCreate.GetComponent<Toggle>().onValueChanged.AddListener(OnToggleChangeCreate);
         toggleLogin.GetComponent<Toggle>().onValueChanged.AddListener(OnToggleChangeLogin);
 
+        findGameSessionButton.GetComponent<Button>().onClick.AddListener(FindGameSessionButtonPressed);
+        placeHolderGameButton.GetComponent<Button>().onClick.AddListener(PlaceHolderGameButtonPressed);
+
+        ChangeGameState(GameStates.LOGIN);
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        //if (Input.GetKeyDown(KeyCode.A))
+        //    ChangeGameState(GameStates.LOGIN);
+        //if (Input.GetKeyDown(KeyCode.S))
+        //    ChangeGameState(GameStates.MAIN_MENU);
+        //if (Input.GetKeyDown(KeyCode.D))
+        //    ChangeGameState(GameStates.WAITING_FOR_MATCH);
+        //if (Input.GetKeyDown(KeyCode.F))
+        //    ChangeGameState(GameStates.PLAYING_TIC_TAC_TOE);
+
     }
 
     public void OnClickButtonSubmit()
@@ -92,4 +124,54 @@ public class GameSystemManager : MonoBehaviour
     {
         toggleCreate.GetComponent<Toggle>().SetIsOnWithoutNotify(!newValue);
     }
+
+    private void FindGameSessionButtonPressed()
+    {
+        networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.ADD_TO_GAME_SESSION).ToString());
+        ChangeGameState(GameStates.WAITING_FOR_MATCH);
+    }
+
+    private void PlaceHolderGameButtonPressed()
+    {
+        networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.PLAY_WAS_MADE).ToString());
+    }
+
+    public void ChangeGameState(GameStates gameState)
+    {
+        inputFieldUsername.SetActive(false);
+        inputFieldPassaword.SetActive(false);
+        buttomSubmit.SetActive(false);
+        toggleCreate.SetActive(false);
+        toggleLogin.SetActive(false);
+        
+        findGameSessionButton.SetActive(false);
+        placeHolderGameButton.SetActive(false);
+
+        if(gameState == GameStates.LOGIN)
+        {
+            inputFieldUsername.SetActive(true);
+            inputFieldPassaword.SetActive(true);
+            buttomSubmit.SetActive(true);
+            toggleCreate.SetActive(true);
+            toggleLogin.SetActive(true);
+        }
+
+        if (gameState == GameStates.MAIN_MENU)
+        {
+            findGameSessionButton.SetActive(true);
+        }
+
+        if (gameState == GameStates.WAITING_FOR_MATCH)
+        {
+
+        }
+
+        if (gameState == GameStates.PLAYING_TIC_TAC_TOE)
+        {
+            placeHolderGameButton.SetActive(true);
+        }
+
+
+    }
+
 }

@@ -17,16 +17,34 @@ public class NetworkedClient : MonoBehaviour
     bool isConnected = false;
     int ourClientID;
 
+    GameObject gameSystemManager;
+
     // Start is called before the first frame update
     void Start()
     {
+        GameObject[] allObjecs = UnityEngine.Object.FindObjectsOfType<GameObject>();
+
+        foreach (GameObject go in allObjecs)
+        {
+            switch (go.name)
+            {
+                case "GM":
+                    gameSystemManager = go;
+                    break;
+            }
+        }
+
         Connect();
+
     }
 
     // Update is called once per frame
     void Update()
     {
         UpdateNetworkConnection();
+
+        if (Input.GetKeyDown(KeyCode.S))
+            SendMessageToHost("Hello from client");
     }
 
     private void UpdateNetworkConnection()
@@ -102,6 +120,24 @@ public class NetworkedClient : MonoBehaviour
     private void ProcessRecievedMsg(string msg, int id)
     {
         Debug.Log("msg recieved = " + msg + ".  connection id = " + id);
+
+        string[] csv = msg.Split(',');
+
+        int signifier = int.Parse(csv[0]);
+
+        if (signifier == (int)GameSystemManager.ServerToClientSignifiers.LOGIN_SUCCESS)
+        {
+            gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.MAIN_MENU);
+        }
+        else if(signifier == (int)GameSystemManager.ServerToClientSignifiers.GAME_SESSION_STARTED)
+        {
+            gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.PLAYING_TIC_TAC_TOE);
+
+        }
+        else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.OPPONENT_PLAY)
+        {
+            Debug.Log("Wait For Turn");
+        }
     }
 
     public bool IsConnected()

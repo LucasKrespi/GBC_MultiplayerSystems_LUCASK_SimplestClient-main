@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.Networking;
 
 public class NetworkedClient : MonoBehaviour
@@ -18,6 +19,8 @@ public class NetworkedClient : MonoBehaviour
     int ourClientID;
 
     GameObject gameSystemManager;
+
+    public bool isInputEnable;
 
     // Start is called before the first frame update
     void Start()
@@ -43,8 +46,6 @@ public class NetworkedClient : MonoBehaviour
     {
         UpdateNetworkConnection();
 
-        if (Input.GetKeyDown(KeyCode.S))
-            SendMessageToHost("Hello from client");
     }
 
     private void UpdateNetworkConnection()
@@ -131,12 +132,26 @@ public class NetworkedClient : MonoBehaviour
         }
         else if(signifier == (int)GameSystemManager.ServerToClientSignifiers.GAME_SESSION_STARTED)
         {
+            if(int.Parse(csv[1]) == (int)GameSystemManager.ServerToClientSignifiers.FIRST_PLAYER)
+            {
+                isInputEnable = true;
+            }
+
             gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.PLAYING_TIC_TAC_TOE);
 
         }
         else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.OPPONENT_PLAY)
         {
-            Debug.Log("Wait For Turn");
+            foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+            {
+                if (int.Parse(csv[1]) == sp.m_iterator)
+                {
+                    sp.isOccupied = true;
+                    sp.m_Button.GetComponentInChildren<Text>().text = "O";
+                }
+
+                isInputEnable = true;
+            }
         }
     }
 
@@ -145,5 +160,5 @@ public class NetworkedClient : MonoBehaviour
         return isConnected;
     }
 
-
+   
 }

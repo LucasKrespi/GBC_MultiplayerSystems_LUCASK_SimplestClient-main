@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+
 
 public class GameSystemManager : MonoBehaviour
 {
@@ -9,6 +11,7 @@ public class GameSystemManager : MonoBehaviour
     // Start is called before the first frame update
 
     GameObject findGameSessionButton, placeHolderGameButton;
+    
 
     public enum ClientToServerSignifiers
     {
@@ -25,7 +28,9 @@ public class GameSystemManager : MonoBehaviour
         CREATE_USER_SUCCESS = 1,
         CREATE_USER_FALIED = 2,
         GAME_SESSION_STARTED = 3,
-        OPPONENT_PLAY = 4
+        OPPONENT_PLAY = 4,
+        FIRST_PLAYER = 5,
+        SECOND_PLAYER = 6
     }
 
     public enum GameStates
@@ -34,7 +39,7 @@ public class GameSystemManager : MonoBehaviour
         MAIN_MENU = 1,
         WAITING_FOR_MATCH = 2,
         PLAYING_TIC_TAC_TOE = 3,
-
+        GAME_OVER = 4
     }
     void Start()
     {
@@ -79,7 +84,11 @@ public class GameSystemManager : MonoBehaviour
         toggleLogin.GetComponent<Toggle>().onValueChanged.AddListener(OnToggleChangeLogin);
 
         findGameSessionButton.GetComponent<Button>().onClick.AddListener(FindGameSessionButtonPressed);
-        placeHolderGameButton.GetComponent<Button>().onClick.AddListener(PlaceHolderGameButtonPressed);
+
+        foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+        {
+            sp.GetComponent<Button>().onClick.AddListener(PlaceHolderGameButtonPressed);
+        }
 
         ChangeGameState(GameStates.LOGIN);
     }
@@ -87,15 +96,10 @@ public class GameSystemManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //if (Input.GetKeyDown(KeyCode.A))
-        //    ChangeGameState(GameStates.LOGIN);
-        //if (Input.GetKeyDown(KeyCode.S))
-        //    ChangeGameState(GameStates.MAIN_MENU);
-        //if (Input.GetKeyDown(KeyCode.D))
-        //    ChangeGameState(GameStates.WAITING_FOR_MATCH);
-        //if (Input.GetKeyDown(KeyCode.F))
-        //    ChangeGameState(GameStates.PLAYING_TIC_TAC_TOE);
-
+        if (CheckGameOver())
+        {
+            ChangeGameState(GameStates.GAME_OVER);
+        }
     }
 
     public void OnClickButtonSubmit()
@@ -133,7 +137,21 @@ public class GameSystemManager : MonoBehaviour
 
     private void PlaceHolderGameButtonPressed()
     {
-        networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.PLAY_WAS_MADE).ToString());
+        if (networkClient.GetComponent<NetworkedClient>().isInputEnable)
+        {
+
+            Spot sp = EventSystem.current.currentSelectedGameObject.GetComponent<Spot>();
+
+            if (!sp.isOccupied)
+            {
+                sp.isOccupied = true;
+                sp.m_Button.GetComponentInChildren<Text>().text = "X";
+                networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.PLAY_WAS_MADE).ToString() + "," + sp.m_iterator.ToString());
+            }
+
+            networkClient.GetComponent<NetworkedClient>().isInputEnable = false;
+
+        }
     }
 
     public void ChangeGameState(GameStates gameState)
@@ -145,7 +163,10 @@ public class GameSystemManager : MonoBehaviour
         toggleLogin.SetActive(false);
         
         findGameSessionButton.SetActive(false);
-        placeHolderGameButton.SetActive(false);
+        foreach(Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+        {
+            sp.gameObject.SetActive(false);
+        }
 
         if(gameState == GameStates.LOGIN)
         {
@@ -168,10 +189,69 @@ public class GameSystemManager : MonoBehaviour
 
         if (gameState == GameStates.PLAYING_TIC_TAC_TOE)
         {
-            placeHolderGameButton.SetActive(true);
+            foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+            {
+                sp.gameObject.SetActive(true);
+            }
         }
 
+        if (gameState == GameStates.GAME_OVER)
+        {
+            inputFieldUsername.SetActive(false);
+            inputFieldPassaword.SetActive(false);
+            buttomSubmit.SetActive(false);
+            toggleCreate.SetActive(false);
+            toggleLogin.SetActive(false);
+
+            findGameSessionButton.SetActive(false);
+            foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+            {
+                sp.gameObject.SetActive(false);
+            }
+        }
 
     }
 
+    private bool CheckGameOver()
+    {
+        return checkCombination(0, 1, 2) || checkCombination(3, 4, 5) || checkCombination(6, 7, 8) ||
+               checkCombination(0, 3, 6) || checkCombination(1, 4, 7) || checkCombination(2, 5, 8) ||
+               checkCombination(0, 4, 8) || checkCombination(2, 4, 6);
+    }
+
+    private bool checkCombination(int i, int j, int k)
+    {
+        string iString = null;
+        string jString = null;
+        string kString = null;
+
+        foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+        {
+            if(sp.m_iterator == i && sp.m_Button != null)
+            {
+                iString = sp.m_Button.GetComponentInChildren<Text>().text;
+            }
+            else if(sp.m_iterator == j && sp.m_Button != null)
+            {
+                jString = sp.m_Button.GetComponentInChildren<Text>().text;
+            }
+            else if (sp.m_iterator == k && sp.m_Button != null)
+            {
+                kString = sp.m_Button.GetComponentInChildren<Text>().text;
+            }
+        }
+
+        if (iString == "X" && jString == "X" && kString == "X")
+        {
+            return true;
+        }
+        else if (iString == "O" && jString == "O" && kString == "O")
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
 }

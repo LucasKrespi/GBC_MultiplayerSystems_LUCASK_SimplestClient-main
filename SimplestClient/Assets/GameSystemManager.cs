@@ -7,14 +7,16 @@ using UnityEngine.EventSystems;
 
 public class GameSystemManager : MonoBehaviour
 {
-    GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient, chatInput, findGameSessionButton, sendButton, chatDisplay;
+    GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient, chatInput, findGameSessionButton, sendButton, chatDisplay, replayButton;
 
     public GameObject textPrefab, chatView;
 
     private int chatMaxMessages = 30;
   
     public LinkedList<chatMessage> listOfMessages;
-    
+
+    public LinkedList<int> replay_iterator;
+    public LinkedList<string> replay_text;
 
     public enum ClientToServerSignifiers
     {
@@ -84,6 +86,9 @@ public class GameSystemManager : MonoBehaviour
                 case "SendButton":
                     sendButton = go;
                     break;
+                case "ReplayButton":
+                    replayButton = go;
+                    break;
                 default:
                     break;
             }
@@ -97,10 +102,13 @@ public class GameSystemManager : MonoBehaviour
         findGameSessionButton.GetComponent<Button>().onClick.AddListener(FindGameSessionButtonPressed);
 
         sendButton.GetComponent<Button>().onClick.AddListener(sendTextFromInputField);
+        replayButton.GetComponent<Button>().onClick.AddListener(replayButtonPressed);
 
         //for the game view
 
         listOfMessages = new LinkedList<chatMessage>();
+        replay_iterator = new LinkedList<int>();
+        replay_text = new LinkedList<string>();
          
         foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
         {
@@ -116,11 +124,6 @@ public class GameSystemManager : MonoBehaviour
         if (CheckGameOver())
         {
             ChangeGameState(GameStates.GAME_OVER);
-        }
-
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            chatSendMessage("You Pressed Space", Color.red);
         }
     }
 
@@ -169,6 +172,9 @@ public class GameSystemManager : MonoBehaviour
                 sp.isOccupied = true;
                 sp.m_Button.GetComponentInChildren<Text>().text = "X";
                 networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.PLAY_WAS_MADE).ToString() + "," + sp.m_iterator.ToString());
+
+                replay_iterator.AddLast(sp.m_iterator);
+                replay_text.AddLast("X");
             }
 
             networkClient.GetComponent<NetworkedClient>().isInputEnable = false;
@@ -189,6 +195,7 @@ public class GameSystemManager : MonoBehaviour
         chatInput.SetActive(false);
         sendButton.SetActive(false);
         chatDisplay.SetActive(false);
+        replayButton.SetActive(false);
 
 
 
@@ -231,17 +238,17 @@ public class GameSystemManager : MonoBehaviour
 
         if (gameState == GameStates.GAME_OVER)
         {
-            inputFieldUsername.SetActive(false);
-            inputFieldPassaword.SetActive(false);
-            buttomSubmit.SetActive(false);
-            toggleCreate.SetActive(false);
-            toggleLogin.SetActive(false);
-
-            findGameSessionButton.SetActive(false);
             foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
             {
-                sp.gameObject.SetActive(false);
+                sp.gameObject.SetActive(true);
+                sp.isOccupied = true;
             }
+
+            chatInput.SetActive(true);
+            sendButton.SetActive(true);
+            chatDisplay.SetActive(true);
+
+            replayButton.SetActive(true);
         }
 
     }
@@ -277,10 +284,12 @@ public class GameSystemManager : MonoBehaviour
 
         if (iString == "X" && jString == "X" && kString == "X")
         {
+            chatSendMessage("YOU WINN!!11!!", Color.red);
             return true;
         }
         else if (iString == "O" && jString == "O" && kString == "O")
         {
+            chatSendMessage("YOU LOSE ;((", Color.red);
             return true;
         }
         else
@@ -320,6 +329,46 @@ public class GameSystemManager : MonoBehaviour
         networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.CHAT_MSG).ToString() + "," + text);
         chatInput.GetComponent<InputField>().Select();
         chatInput.GetComponent<InputField>().text = "";
+    }
+
+    public void replayButtonPressed()
+    {
+
+        foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+        {
+            sp.m_Button.GetComponentInChildren<Text>().text = "";
+        }
+
+        StartCoroutine(replay());
+    }
+
+
+    public IEnumerator replay()
+    {
+        if(replay_iterator.Count > 0)
+        {
+            foreach(Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+            {
+                
+                if (sp.m_iterator == replay_iterator.First.Value)
+                {
+                    sp.m_Button.GetComponentInChildren<Text>().text = replay_text.First.Value.ToString();
+                    Debug.Log("Playmande");
+                }
+            }
+            replay_iterator.RemoveFirst();
+            replay_text.RemoveFirst();
+        }
+        else
+        {
+            yield return null;
+        }
+
+
+        yield return new WaitForSeconds(1);
+
+        StartCoroutine(replay());
+
     }
 }
 

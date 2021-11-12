@@ -148,6 +148,8 @@ public class NetworkedClient : MonoBehaviour
                 {
                     sp.isOccupied = true;
                     sp.m_Button.GetComponentInChildren<Text>().text = "O";
+                    gameSystemManager.GetComponent<GameSystemManager>().replay_iterator.AddLast(sp.m_iterator);
+                    gameSystemManager.GetComponent<GameSystemManager>().replay_text.AddLast("O");
                 }
 
                 isInputEnable = true;

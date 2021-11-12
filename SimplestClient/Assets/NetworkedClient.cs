@@ -153,6 +153,11 @@ public class NetworkedClient : MonoBehaviour
                 isInputEnable = true;
             }
         }
+        else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.CHAT_MSG)
+        {
+            csv[0] = "";
+            gameSystemManager.GetComponent<GameSystemManager>().chatSendMessage(string.Join(" ", csv), Color.black);
+        }
     }
 
     public bool IsConnected()

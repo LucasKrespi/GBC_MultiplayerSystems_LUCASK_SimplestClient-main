@@ -7,10 +7,13 @@ using UnityEngine.EventSystems;
 
 public class GameSystemManager : MonoBehaviour
 {
-    GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient;
-    // Start is called before the first frame update
+    GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient, chatInput, findGameSessionButton, sendButton, chatDisplay;
 
-    GameObject findGameSessionButton, placeHolderGameButton;
+    public GameObject textPrefab, chatView;
+
+    private int chatMaxMessages = 30;
+  
+    public LinkedList<chatMessage> listOfMessages;
     
 
     public enum ClientToServerSignifiers
@@ -18,7 +21,8 @@ public class GameSystemManager : MonoBehaviour
         LOGIN = 0,
         CREATE_USER = 1,
         ADD_TO_GAME_SESSION = 2,
-        PLAY_WAS_MADE = 3
+        PLAY_WAS_MADE = 3,
+        CHAT_MSG = 4
     }
 
     public enum ServerToClientSignifiers
@@ -30,7 +34,8 @@ public class GameSystemManager : MonoBehaviour
         GAME_SESSION_STARTED = 3,
         OPPONENT_PLAY = 4,
         FIRST_PLAYER = 5,
-        SECOND_PLAYER = 6
+        SECOND_PLAYER = 6,
+        CHAT_MSG = 7
     }
 
     public enum GameStates
@@ -70,8 +75,14 @@ public class GameSystemManager : MonoBehaviour
                 case "Find Game":
                     findGameSessionButton = go;
                     break;
-                case "MakePlay":
-                    placeHolderGameButton = go;
+                case "ChatInput":
+                    chatInput = go;
+                    break;
+                case "ChatView":
+                    chatDisplay = go;
+                    break;
+                case "SendButton":
+                    sendButton = go;
                     break;
                 default:
                     break;
@@ -85,9 +96,15 @@ public class GameSystemManager : MonoBehaviour
 
         findGameSessionButton.GetComponent<Button>().onClick.AddListener(FindGameSessionButtonPressed);
 
+        sendButton.GetComponent<Button>().onClick.AddListener(sendTextFromInputField);
+
+        //for the game view
+
+        listOfMessages = new LinkedList<chatMessage>();
+         
         foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
         {
-            sp.GetComponent<Button>().onClick.AddListener(PlaceHolderGameButtonPressed);
+            sp.GetComponent<Button>().onClick.AddListener(MakeAPlayButtonPressed);
         }
 
         ChangeGameState(GameStates.LOGIN);
@@ -99,6 +116,11 @@ public class GameSystemManager : MonoBehaviour
         if (CheckGameOver())
         {
             ChangeGameState(GameStates.GAME_OVER);
+        }
+
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            chatSendMessage("You Pressed Space", Color.red);
         }
     }
 
@@ -135,7 +157,7 @@ public class GameSystemManager : MonoBehaviour
         ChangeGameState(GameStates.WAITING_FOR_MATCH);
     }
 
-    private void PlaceHolderGameButtonPressed()
+    private void MakeAPlayButtonPressed()
     {
         if (networkClient.GetComponent<NetworkedClient>().isInputEnable)
         {
@@ -163,7 +185,14 @@ public class GameSystemManager : MonoBehaviour
         toggleLogin.SetActive(false);
         
         findGameSessionButton.SetActive(false);
-        foreach(Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+
+        chatInput.SetActive(false);
+        sendButton.SetActive(false);
+        chatDisplay.SetActive(false);
+
+
+
+        foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
         {
             sp.gameObject.SetActive(false);
         }
@@ -193,6 +222,11 @@ public class GameSystemManager : MonoBehaviour
             {
                 sp.gameObject.SetActive(true);
             }
+
+            chatInput.SetActive(true);
+            sendButton.SetActive(true);
+            chatDisplay.SetActive(true);
+
         }
 
         if (gameState == GameStates.GAME_OVER)
@@ -254,4 +288,45 @@ public class GameSystemManager : MonoBehaviour
             return false;
         }
     }
+
+    public void chatSendMessage(string text, Color color)
+    {
+        if(listOfMessages.Count >= chatMaxMessages)
+        {
+            Destroy(listOfMessages.First.Value.textObject.gameObject);
+
+            listOfMessages.RemoveFirst();
+        }
+        chatMessage chatMessage = new chatMessage();
+
+        // THIS MAKEE NO SCENSE CHANGE IT FOR THE CONTRUCTOR
+        chatMessage.text = text;
+
+        GameObject newText = Instantiate(textPrefab, chatView.transform);
+
+        chatMessage.textObject = newText.GetComponent<Text>();
+
+        chatMessage.textObject.text = chatMessage.text;
+
+        chatMessage.textObject.color = color;
+
+        listOfMessages.AddLast(chatMessage);
+    }
+
+    public void sendTextFromInputField()
+    {
+        string text = chatInput.GetComponent<InputField>().text;
+        chatSendMessage(text, Color.green);
+        networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.CHAT_MSG).ToString() + "," + text);
+        chatInput.GetComponent<InputField>().Select();
+        chatInput.GetComponent<InputField>().text = "";
+    }
+}
+
+[System.Serializable]
+public class chatMessage
+{
+    public string text;
+
+    public Text textObject;
 }

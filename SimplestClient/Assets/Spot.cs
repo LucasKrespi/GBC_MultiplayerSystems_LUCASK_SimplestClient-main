@@ -7,6 +7,8 @@ public class Spot : MonoBehaviour
 {
     public Button m_Button;
 
+    public string m_ButtonText;
+
     public int m_iterator;
 
     public bool isOccupied;
@@ -16,15 +18,17 @@ public class Spot : MonoBehaviour
     {
         m_Button = GetComponent<Button>();
 
-        m_Button.GetComponentInChildren<Text>().text = "";
+        m_ButtonText = "";
+
+        m_Button.GetComponentInChildren<Text>().text = m_ButtonText;
 
         isOccupied = false;
     }
 
-    // Update is called once per frame
-    void Update()
+    public void ChangeButonText(string newText)
     {
-        
+        m_ButtonText = newText;
+        m_Button.GetComponentInChildren<Text>().text = m_ButtonText;
     }
 
 }

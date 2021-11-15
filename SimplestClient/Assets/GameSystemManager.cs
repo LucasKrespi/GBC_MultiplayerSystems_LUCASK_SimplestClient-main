@@ -7,24 +7,31 @@ using UnityEngine.EventSystems;
 
 public class GameSystemManager : MonoBehaviour
 {
-    GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient, chatInput, findGameSessionButton, sendButton, chatDisplay, replayButton;
+    GameObject inputFieldUsername, inputFieldPassaword, buttomSubmit, toggleCreate, toggleLogin, networkClient, chatInput, findGameSessionButton, sendButton, chatDisplay, replayButton, obserButton;
 
     public GameObject textPrefab, chatView;
 
     private int chatMaxMessages = 30;
-  
-    public LinkedList<chatMessage> listOfMessages;
 
-    public LinkedList<int> replay_iterator;
-    public LinkedList<string> replay_text;
+    public const string m_sPlayerOneMove = "X", m_sPlayerTwoMove = "O";
 
+    public player me, enemy;
+
+    public GameStates currentGameState;
+
+    public LinkedList<chatMessage> m_lkMessagesForChat;
+
+    public LinkedList<Spot> m_lkSpotsForReplay;
+
+    private bool hasXwon = false, hasOwon = false;
     public enum ClientToServerSignifiers
     {
         LOGIN = 0,
         CREATE_USER = 1,
         ADD_TO_GAME_SESSION = 2,
         PLAY_WAS_MADE = 3,
-        CHAT_MSG = 4
+        CHAT_MSG = 4,
+        JOIN_AS_OBSERVER = 5
     }
 
     public enum ServerToClientSignifiers
@@ -37,7 +44,8 @@ public class GameSystemManager : MonoBehaviour
         OPPONENT_PLAY = 4,
         FIRST_PLAYER = 5,
         SECOND_PLAYER = 6,
-        CHAT_MSG = 7
+        CHAT_MSG = 7,
+        OBSERVER = 8
     }
 
     public enum GameStates
@@ -46,7 +54,8 @@ public class GameSystemManager : MonoBehaviour
         MAIN_MENU = 1,
         WAITING_FOR_MATCH = 2,
         PLAYING_TIC_TAC_TOE = 3,
-        GAME_OVER = 4
+        GAME_OVER = 4,
+        OBSERVING_GAME = 5 
     }
     void Start()
     {
@@ -89,6 +98,9 @@ public class GameSystemManager : MonoBehaviour
                 case "ReplayButton":
                     replayButton = go;
                     break;
+                case "JoinAsObserver":
+                    obserButton = go;
+                    break;
                 default:
                     break;
             }
@@ -104,12 +116,13 @@ public class GameSystemManager : MonoBehaviour
         sendButton.GetComponent<Button>().onClick.AddListener(sendTextFromInputField);
         replayButton.GetComponent<Button>().onClick.AddListener(replayButtonPressed);
 
+        obserButton.GetComponent<Button>().onClick.AddListener(JoinAsAnObserver);
+
+
         //for the game view
 
-        listOfMessages = new LinkedList<chatMessage>();
-        replay_iterator = new LinkedList<int>();
-        replay_text = new LinkedList<string>();
-         
+        m_lkMessagesForChat = new LinkedList<chatMessage>();
+        m_lkSpotsForReplay = new LinkedList<Spot>();
         foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
         {
             sp.GetComponent<Button>().onClick.AddListener(MakeAPlayButtonPressed);
@@ -121,8 +134,20 @@ public class GameSystemManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (CheckGameOver())
+        if (CheckGameOver() && currentGameState != GameStates.GAME_OVER)
         {
+            if (hasXwon)
+            {
+                chatSendMessage("X WINN!!11!!", Color.red);
+                hasXwon = false;
+            }
+            if (hasOwon)
+            {
+                chatSendMessage("O WINN!!11!!", Color.red);
+                hasOwon = false;
+            }
+
+
             ChangeGameState(GameStates.GAME_OVER);
         }
     }
@@ -170,11 +195,10 @@ public class GameSystemManager : MonoBehaviour
             if (!sp.isOccupied)
             {
                 sp.isOccupied = true;
-                sp.m_Button.GetComponentInChildren<Text>().text = "X";
+                sp.ChangeButonText(me.move);
                 networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.PLAY_WAS_MADE).ToString() + "," + sp.m_iterator.ToString());
 
-                replay_iterator.AddLast(sp.m_iterator);
-                replay_text.AddLast("X");
+                m_lkSpotsForReplay.AddLast(sp);
             }
 
             networkClient.GetComponent<NetworkedClient>().isInputEnable = false;
@@ -182,8 +206,16 @@ public class GameSystemManager : MonoBehaviour
         }
     }
 
+    private void JoinAsAnObserver()
+    {
+        networkClient.GetComponent<NetworkedClient>().SendMessageToHost(((int)ClientToServerSignifiers.JOIN_AS_OBSERVER).ToString());
+        ChangeGameState(GameStates.WAITING_FOR_MATCH);
+    }
+
     public void ChangeGameState(GameStates gameState)
     {
+        currentGameState = gameState;
+
         inputFieldUsername.SetActive(false);
         inputFieldPassaword.SetActive(false);
         buttomSubmit.SetActive(false);
@@ -196,6 +228,7 @@ public class GameSystemManager : MonoBehaviour
         sendButton.SetActive(false);
         chatDisplay.SetActive(false);
         replayButton.SetActive(false);
+        obserButton.SetActive(false);
 
 
 
@@ -216,6 +249,7 @@ public class GameSystemManager : MonoBehaviour
         if (gameState == GameStates.MAIN_MENU)
         {
             findGameSessionButton.SetActive(true);
+            obserButton.SetActive(true);
         }
 
         if (gameState == GameStates.WAITING_FOR_MATCH)
@@ -251,6 +285,17 @@ public class GameSystemManager : MonoBehaviour
             replayButton.SetActive(true);
         }
 
+        if (gameState == GameStates.OBSERVING_GAME)
+        {
+            foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+            {
+                sp.gameObject.SetActive(true);
+            }
+
+            chatInput.SetActive(true);
+            sendButton.SetActive(true);
+            chatDisplay.SetActive(true);
+        }
     }
 
     private bool CheckGameOver()
@@ -284,12 +329,12 @@ public class GameSystemManager : MonoBehaviour
 
         if (iString == "X" && jString == "X" && kString == "X")
         {
-            chatSendMessage("YOU WINN!!11!!", Color.red);
+            hasXwon = true;
             return true;
         }
         else if (iString == "O" && jString == "O" && kString == "O")
         {
-            chatSendMessage("YOU LOSE ;((", Color.red);
+            hasOwon = true;
             return true;
         }
         else
@@ -300,15 +345,15 @@ public class GameSystemManager : MonoBehaviour
 
     public void chatSendMessage(string text, Color color)
     {
-        if(listOfMessages.Count >= chatMaxMessages)
+        if(m_lkMessagesForChat.Count >= chatMaxMessages)
         {
-            Destroy(listOfMessages.First.Value.textObject.gameObject);
+            Destroy(m_lkMessagesForChat.First.Value.textObject.gameObject);
 
-            listOfMessages.RemoveFirst();
+            m_lkMessagesForChat.RemoveFirst();
         }
         chatMessage chatMessage = new chatMessage();
 
-        // THIS MAKEE NO SCENSE CHANGE IT FOR THE CONTRUCTOR
+       
         chatMessage.text = text;
 
         GameObject newText = Instantiate(textPrefab, chatView.transform);
@@ -319,7 +364,7 @@ public class GameSystemManager : MonoBehaviour
 
         chatMessage.textObject.color = color;
 
-        listOfMessages.AddLast(chatMessage);
+        m_lkMessagesForChat.AddLast(chatMessage);
     }
 
     public void sendTextFromInputField()
@@ -345,19 +390,20 @@ public class GameSystemManager : MonoBehaviour
 
     public IEnumerator replay()
     {
-        if(replay_iterator.Count > 0)
+        if(m_lkSpotsForReplay.Count > 0)
         {
             foreach(Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
             {
                 
-                if (sp.m_iterator == replay_iterator.First.Value)
+                if (sp.m_iterator == m_lkSpotsForReplay.First.Value.m_iterator)
                 {
-                    sp.m_Button.GetComponentInChildren<Text>().text = replay_text.First.Value.ToString();
-                    Debug.Log("Playmande");
+                    sp.ChangeButonText(m_lkSpotsForReplay.First.Value.m_ButtonText);
+                    Debug.Log("Should replay: " + m_lkSpotsForReplay.First.Value.m_ButtonText);
                 }
             }
-            replay_iterator.RemoveFirst();
-            replay_text.RemoveFirst();
+
+            m_lkSpotsForReplay.RemoveFirst();
+
         }
         else
         {
@@ -370,6 +416,19 @@ public class GameSystemManager : MonoBehaviour
         StartCoroutine(replay());
 
     }
+
+
+    public void SetMeAsFirstPLayer()
+    {
+        me.move = m_sPlayerOneMove;
+        enemy.move = m_sPlayerTwoMove;
+    }
+
+    public void SetMeAsSecondPLayer()
+    {
+        enemy.move = m_sPlayerOneMove;
+        me.move = m_sPlayerTwoMove;
+    }
 }
 
 [System.Serializable]
@@ -378,4 +437,10 @@ public class chatMessage
     public string text;
 
     public Text textObject;
+}
+
+[System.Serializable]
+public class player
+{
+    public string move;
 }

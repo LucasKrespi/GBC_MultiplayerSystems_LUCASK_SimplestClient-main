@@ -135,24 +135,70 @@ public class NetworkedClient : MonoBehaviour
             if(int.Parse(csv[1]) == (int)GameSystemManager.ServerToClientSignifiers.FIRST_PLAYER)
             {
                 isInputEnable = true;
+
+                gameSystemManager.GetComponent<GameSystemManager>().SetMeAsFirstPLayer();
+
+                gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.PLAYING_TIC_TAC_TOE);
+            }
+            else if(int.Parse(csv[1]) == (int)GameSystemManager.ServerToClientSignifiers.SECOND_PLAYER)
+            {
+                gameSystemManager.GetComponent<GameSystemManager>().SetMeAsSecondPLayer();
+
+                gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.PLAYING_TIC_TAC_TOE);
+            }
+            else if (int.Parse(csv[1]) == (int)GameSystemManager.ServerToClientSignifiers.OBSERVER)
+            {
+                gameSystemManager.GetComponent<GameSystemManager>().SetMeAsSecondPLayer();
+
+                gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.OBSERVING_GAME);
             }
 
-            gameSystemManager.GetComponent<GameSystemManager>().ChangeGameState(GameSystemManager.GameStates.PLAYING_TIC_TAC_TOE);
+
 
         }
         else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.OPPONENT_PLAY)
         {
-            foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+            if(gameSystemManager.GetComponent<GameSystemManager>().currentGameState == GameSystemManager.GameStates.OBSERVING_GAME)
             {
-                if (int.Parse(csv[1]) == sp.m_iterator)
+                foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
                 {
-                    sp.isOccupied = true;
-                    sp.m_Button.GetComponentInChildren<Text>().text = "O";
-                    gameSystemManager.GetComponent<GameSystemManager>().replay_iterator.AddLast(sp.m_iterator);
-                    gameSystemManager.GetComponent<GameSystemManager>().replay_text.AddLast("O");
+                    if (int.Parse(csv[1]) == sp.m_iterator)
+                    {
+                        sp.isOccupied = true;
+                        sp.ChangeButonText(gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
+
+                        gameSystemManager.GetComponent<GameSystemManager>().m_lkSpotsForReplay.AddLast(sp);
+                    }
+
                 }
 
-                isInputEnable = true;
+                Debug.Log("enemy player move = " + gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
+                if (gameSystemManager.GetComponent<GameSystemManager>().enemy.move == GameSystemManager.m_sPlayerOneMove)
+                {
+                    gameSystemManager.GetComponent<GameSystemManager>().enemy.move = GameSystemManager.m_sPlayerTwoMove;
+                }
+                else
+                {
+                    gameSystemManager.GetComponent<GameSystemManager>().enemy.move = GameSystemManager.m_sPlayerOneMove;
+                }
+
+                isInputEnable = false;
+            }
+            else
+            {
+                foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
+                {
+                    if (int.Parse(csv[1]) == sp.m_iterator)
+                    {
+                        sp.isOccupied = true;
+                        sp.ChangeButonText(gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
+                        Debug.Log("oi??? " + gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
+
+                        gameSystemManager.GetComponent<GameSystemManager>().m_lkSpotsForReplay.AddLast(sp);
+                    }
+
+                    isInputEnable = true;
+                }
             }
         }
         else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.CHAT_MSG)

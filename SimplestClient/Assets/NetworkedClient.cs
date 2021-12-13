@@ -45,7 +45,6 @@ public class NetworkedClient : MonoBehaviour
     void Update()
     {
         UpdateNetworkConnection();
-
     }
 
     private void UpdateNetworkConnection()
@@ -158,28 +157,28 @@ public class NetworkedClient : MonoBehaviour
         }
         else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.OPPONENT_PLAY)
         {
-            if(gameSystemManager.GetComponent<GameSystemManager>().currentGameState == GameSystemManager.GameStates.OBSERVING_GAME)
+            if(gameSystemManager.GetComponent<GameSystemManager>().m_gsCurrentGameState == GameSystemManager.GameStates.OBSERVING_GAME)
             {
                 foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
                 {
                     if (int.Parse(csv[1]) == sp.m_iterator)
                     {
                         sp.isOccupied = true;
-                        sp.ChangeButonText(gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
+                        sp.ChangeButonText(gameSystemManager.GetComponent<GameSystemManager>().m_pEnemy.m_sMove);
 
                         gameSystemManager.GetComponent<GameSystemManager>().m_lkSpotsForReplay.AddLast(sp);
                     }
 
                 }
 
-                Debug.Log("enemy player move = " + gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
-                if (gameSystemManager.GetComponent<GameSystemManager>().enemy.move == GameSystemManager.m_sPlayerOneMove)
+                Debug.Log("enemy player move = " + gameSystemManager.GetComponent<GameSystemManager>().m_pEnemy.m_sMove);
+                if (gameSystemManager.GetComponent<GameSystemManager>().m_pEnemy.m_sMove == GameSystemManager.m_sPlayerOneMove)
                 {
-                    gameSystemManager.GetComponent<GameSystemManager>().enemy.move = GameSystemManager.m_sPlayerTwoMove;
+                    gameSystemManager.GetComponent<GameSystemManager>().m_pEnemy.m_sMove = GameSystemManager.m_sPlayerTwoMove;
                 }
                 else
                 {
-                    gameSystemManager.GetComponent<GameSystemManager>().enemy.move = GameSystemManager.m_sPlayerOneMove;
+                    gameSystemManager.GetComponent<GameSystemManager>().m_pEnemy.m_sMove = GameSystemManager.m_sPlayerOneMove;
                 }
 
                 isInputEnable = false;
@@ -191,8 +190,7 @@ public class NetworkedClient : MonoBehaviour
                     if (int.Parse(csv[1]) == sp.m_iterator)
                     {
                         sp.isOccupied = true;
-                        sp.ChangeButonText(gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
-                        Debug.Log("oi??? " + gameSystemManager.GetComponent<GameSystemManager>().enemy.move);
+                        sp.ChangeButonText(gameSystemManager.GetComponent<GameSystemManager>().m_pEnemy.m_sMove);
 
                         gameSystemManager.GetComponent<GameSystemManager>().m_lkSpotsForReplay.AddLast(sp);
                     }
@@ -204,7 +202,7 @@ public class NetworkedClient : MonoBehaviour
         else if (signifier == (int)GameSystemManager.ServerToClientSignifiers.CHAT_MSG)
         {
             csv[0] = "";
-            gameSystemManager.GetComponent<GameSystemManager>().chatSendMessage(string.Join(" ", csv), Color.black);
+            gameSystemManager.GetComponent<GameSystemManager>().ChatSendMessage(string.Join(" ", csv), Color.black);
         }
     }
 

@@ -133,16 +133,16 @@ public class GameSystemManager : MonoBehaviour
         backButtom.GetComponent<Button>().onClick.AddListener(BackButtomPressed);
 
 
-
-        //for the game view
-
-        m_lkMessagesForChat = new LinkedList<chatMessage>();
-        m_lkSpotsForReplay = new LinkedList<Spot>();
         foreach (Spot sp in FindObjectOfType<CreateBoard>().m_SpotList)
         {
             sp.GetComponent<Button>().onClick.AddListener(MakeAPlayButtonPressed);
         }
 
+
+        //for the game view
+
+        m_lkMessagesForChat = new LinkedList<chatMessage>();
+        m_lkSpotsForReplay = new LinkedList<Spot>();
         ChangeGameState(GameStates.LOGIN);
     }
 
